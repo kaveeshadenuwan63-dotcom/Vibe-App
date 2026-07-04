@@ -12,10 +12,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Unzip Project Files
-        run: |
-          unzip vibe.zip -d project_root
-          echo "Listing extracted files:"
-          ls -R project_root
+        run: unzip vibe.zip -d project_root
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -23,35 +20,23 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Grant Execute Permission for Gradle Wrapper
+      - name: Find Project and Build
         run: |
-          if [ -f "project_root/gradlew" ]; then
-            chmod +x project_root/gradlew
-          else
-            echo "gradlew not found in project_root, checking subfolders..."
-            SUBFOLDER=$(find project_root -maxdepth 2 -name gradlew -exec dirname {} \;)
-            if [ ! -z "$SUBFOLDER" ]; then
-              chmod +x "$SUBFOLDER/gradlew"
-              echo "SUBFOLDER_PATH=$SUBFOLDER" >> $GITHUB_ENV
-            fi
+          # Gradlew එක තියෙන ෆෝල්ඩර් එක හොයාගන්නවා
+          GRADLEW_DIR=$(find project_root -name "gradlew" -exec dirname {} \;)
+          
+          if [ -z "$GRADLEW_DIR" ]; then
+            echo "Error: gradlew ෆයිල් එක හොයාගන්න බැරි වුණා!"
+            exit 1
           fi
-
-      - name: Build APK
-        run: |
-          if [ ! -z "$SUBFOLDER_PATH" ]; then
-            cd "$SUBFOLDER_PATH"
-            ./gradlew assembleDebug
-          else
-            cd project_root
-            ./gradlew assembleDebug
-          fi
+          
+          echo "ප්‍රොජෙක්ට් එක හොයාගත්තා: $GRADLEW_DIR"
+          cd "$GRADLEW_DIR"
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Vibe-App-Debug-APK
-          path: |
-            project_root/**/build/outputs/apk/debug/*.apk
+          path: project_root/**/build/outputs/apk/debug/*.apk
